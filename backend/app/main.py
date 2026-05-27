@@ -5,6 +5,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.api.auth import router as auth_router
+from app.api.user import admin_router, router as user_router
 from app.core.config import settings
 from app.core.exceptions import AppException
 
@@ -54,6 +55,8 @@ def create_app() -> FastAPI:
 
     # ── Include routers ────────────────────────────────────────────
     app.include_router(auth_router)
+    app.include_router(user_router)
+    app.include_router(admin_router)
 
     return app
 

@@ -43,6 +43,7 @@ def _user_to_info(user: User) -> UserInfo:
         username=user.username,
         nickname=user.nickname,
         avatar_url=user.avatar_url,
+        bio=user.bio,
         role=user.role,
         level=user.level,
         streamer_verified=user.streamer_verified,
@@ -131,7 +132,8 @@ class AuthService:
             if user.login_failed_count >= settings.MAX_LOGIN_FAILURES:
                 user.locked_until = now + settings.ACCOUNT_LOCK_MINUTES * 60
             user.updated_at = now
-            await self.db.flush()
+            # Explicitly commit failure count so it persists despite get_db's rollback on exception
+            await self.db.commit()
             raise InvalidCredentialsError()
 
         # Success: reset failure count, record login

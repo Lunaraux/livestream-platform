@@ -71,6 +71,7 @@ class UserInfo(BaseModel):
     username: str
     nickname: str
     avatar_url: str | None = None
+    bio: str | None = None
     role: str
     level: int
     streamer_verified: bool

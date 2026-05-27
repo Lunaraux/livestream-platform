@@ -19,7 +19,11 @@ class TimestampMixin:
     - deleted_at: nullable UTC integer timestamp (soft delete)
     """
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer(), "sqlite"),
+        primary_key=True,
+        autoincrement=True,
+    )
 
     created_at: Mapped[int] = mapped_column(
         Integer, default=lambda: int(time.time()), nullable=False

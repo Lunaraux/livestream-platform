@@ -67,6 +67,22 @@ async def get_current_user(
 CurrentUserDep = Annotated[User, Depends(get_current_user)]
 
 
+async def get_optional_user(
+    authorization: Annotated[str | None, Header()] = None,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> User | None:
+    """Try to get current user, return None if not authenticated (guest)."""
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    try:
+        return await get_current_user(authorization, db)
+    except (UnauthorizedError, AccountBannedError, AccountLockedError):
+        return None
+
+
+OptionalUserDep = Annotated[User | None, Depends(get_optional_user)]
+
+
 def require_role(*roles: str):
     """Factory: dependency that requires the current user to have one of the given roles."""
 
