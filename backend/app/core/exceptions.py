@@ -134,3 +134,48 @@ class ApplicationNotFoundError(AppException):
 
     def __init__(self):
         super().__init__(code=1004, message="认证申请不存在", status_code=404)
+
+
+# ── Room exceptions ────────────────────────────────────────────────
+
+
+class RoomNotFoundError(AppException):
+    """Room not found (3001)."""
+
+    def __init__(self):
+        super().__init__(code=3001, message="直播间不存在", status_code=404)
+
+
+class RoomClosedError(AppException):
+    """Room is closed/ended (3002)."""
+
+    def __init__(self):
+        super().__init__(code=3002, message="直播间已关闭", status_code=404)
+
+
+class RoomBannedError(AppException):
+    """Room is banned (3003)."""
+
+    def __init__(self):
+        super().__init__(code=3003, message="直播间已封禁", status_code=403)
+
+
+class StreamerNotVerifiedError(AppException):
+    """Streamer has not passed identity verification."""
+
+    def __init__(self):
+        super().__init__(code=1001, message="主播未通过认证，无法创建直播间", status_code=400)
+
+
+class RoomAlreadyExistsError(AppException):
+    """Streamer already has a room."""
+
+    def __init__(self):
+        super().__init__(code=1001, message="您已创建过直播间，每个主播只能有一个直播间", status_code=400)
+
+
+class InvalidRoomStatusError(AppException):
+    """Room is in an invalid status for the requested operation."""
+
+    def __init__(self, message: str = "当前直播间状态不允许此操作"):
+        super().__init__(code=1001, message=message, status_code=400)

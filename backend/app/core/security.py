@@ -5,11 +5,11 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from redis import asyncio as aioredis
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from app.core.config import settings
+from app.core.redis import get_redis
 
 # ── Password hashing ──────────────────────────────────────────────
 
@@ -73,32 +73,15 @@ def decode_access_token(token: str) -> dict[str, Any]:
 
 # ── Redis token blacklist ─────────────────────────────────────────
 
-_redis_pool: aioredis.Redis | None = None
-
-
-async def _get_redis() -> aioredis.Redis:
-    global _redis_pool
-    if _redis_pool is None:
-        _redis_pool = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
-    return _redis_pool
-
 
 async def blacklist_refresh_token(jti: str, expires_at_ts: int) -> None:
     """Add a refresh token JTI to the Redis blacklist with TTL."""
-    r = await _get_redis()
+    r = await get_redis()
     ttl = max(expires_at_ts - _now_utc_ts(), 1)
     await r.setex(f"blacklist:refresh:{jti}", ttl, "1")
 
 
 async def is_token_blacklisted(jti: str) -> bool:
     """Check if a token JTI has been blacklisted."""
-    r = await _get_redis()
+    r = await get_redis()
     return await r.exists(f"blacklist:refresh:{jti}") > 0
-
-
-async def close_redis() -> None:
-    """Close Redis connection pool."""
-    global _redis_pool
-    if _redis_pool is not None:
-        await _redis_pool.aclose()
-        _redis_pool = None

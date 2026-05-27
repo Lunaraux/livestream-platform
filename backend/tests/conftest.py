@@ -1,8 +1,8 @@
-"""Test fixtures — async client, test DB, mocked Redis blacklist."""
+"""Test fixtures — async client, test DB, mocked Redis."""
 
 import time
 from collections.abc import AsyncGenerator
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -36,28 +36,73 @@ async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
 
 # ── Redis mock ─────────────────────────────────────────────────────
 
+
 def _mock_redis():
-    """Create a mock that fakes a Redis blacklist store."""
+    """Create a mock that fakes a Redis key-value store."""
     store: dict[str, str] = {}
 
+    async def _setex(key, ttl, value):
+        store[key] = value
+    async def _get(key):
+        return store.get(key)
+    async def _exists(key):
+        return 1 if key in store else 0
+    async def _set(key, value):
+        store[key] = value
+    async def _incrby(key, amount):
+        current = int(store.get(key, 0))
+        store[key] = str(current + amount)
+        return current + amount
+    async def _delete(key):
+        store.pop(key, None)
+    async def _aclose():
+        pass
+
     mock = AsyncMock()
-    mock.setex = AsyncMock(side_effect=lambda key, ttl, value: store.__setitem__(key, value))
-    mock.get = AsyncMock(side_effect=lambda key: store.get(key))
-    mock.exists = AsyncMock(side_effect=lambda key: 1 if key in store else 0)
-    mock.aclose = AsyncMock()
+    mock.setex = AsyncMock(side_effect=_setex)
+    mock.get = AsyncMock(side_effect=_get)
+    mock.exists = AsyncMock(side_effect=_exists)
+    mock.set = AsyncMock(side_effect=_set)
+    mock.incrby = AsyncMock(side_effect=_incrby)
+    mock.delete = AsyncMock(side_effect=_delete)
+    mock.aclose = AsyncMock(side_effect=_aclose)
     return mock
+
+
+_redis_mock = _mock_redis()
+
+
+async def _mock_get_redis():
+    return _redis_mock
 
 
 # ── App fixture ────────────────────────────────────────────────────
 
 @pytest.fixture
 async def app():
-    """Create a fresh FastAPI app with test DB and mocked Redis."""
+    """Create a fresh FastAPI app with test DB and mocked Redis.
+
+    Monkey-patches get_redis at every import site BEFORE creating the app,
+    so all module-level imports of get_redis resolve to the mock.
+    """
+    # Must import and patch BEFORE any other app imports that reference get_redis
+    import app.core.redis as core_redis
+
+    core_redis.get_redis = _mock_get_redis
+
+    # Now the rest of the app can be created — all imports resolve to mock
     from app.models.base import Base
 
     # Create tables
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # Also patch already-imported modules that cached get_redis as a local name
+    import app.core.security as security_mod
+    import app.services.room_service as room_svc
+
+    security_mod.get_redis = _mock_get_redis
+    room_svc.get_redis = _mock_get_redis
 
     app = create_app()
     app.dependency_overrides[get_db] = override_get_db
@@ -72,11 +117,9 @@ async def app():
 @pytest.fixture
 async def client(app) -> AsyncGenerator[AsyncClient, None]:
     """Async HTTP client for test requests."""
-    redis_mock = _mock_redis()
-    with patch("app.core.security._get_redis", return_value=redis_mock):
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as ac:
-            yield ac
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
 
 
 @pytest.fixture
