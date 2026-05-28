@@ -15,6 +15,8 @@ from app.api.wallet import router as wallet_router
 from app.api.settlement import streamer_router as settlement_streamer_router
 from app.api.settlement import admin_router as settlement_admin_router
 from app.api.websocket import router as websocket_router
+from app.api.dashboard import admin_router as dashboard_admin_router
+from app.api.dashboard import streamer_router as dashboard_streamer_router
 from app.core.config import settings
 from app.core.exceptions import AppException
 
@@ -74,6 +76,8 @@ def create_app() -> FastAPI:
     app.include_router(settlement_streamer_router)
     app.include_router(settlement_admin_router)
     app.include_router(websocket_router)
+    app.include_router(dashboard_admin_router)
+    app.include_router(dashboard_streamer_router)
 
     return app
 

@@ -126,10 +126,12 @@ async def app():
     import app.core.security as security_mod
     import app.services.room_service as room_svc
     import app.services.interaction_service as interaction_svc
+    import app.services.dashboard_service as dashboard_svc
 
     security_mod.get_redis = _mock_get_redis
     room_svc.get_redis = _mock_get_redis
     interaction_svc.get_redis = _mock_get_redis
+    dashboard_svc.get_redis = _mock_get_redis
 
     app = create_app()
     app.dependency_overrides[get_db] = override_get_db
