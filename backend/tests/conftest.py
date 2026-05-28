@@ -134,9 +134,25 @@ async def app():
     app = create_app()
     app.dependency_overrides[get_db] = override_get_db
 
+    # Patch websocket connection_manager — imported after create_app()
+    import app.websocket.connection_manager as ws_cm
+    ws_cm.get_redis = _mock_get_redis
+
+    # Override async_session_factory for WebSocket endpoints (they use it directly)
+    import app.core.database as db_mod
+    old_factory = db_mod.async_session_factory
+    db_mod.async_session_factory = test_session_factory
+    # Also patch local imports in modules that cached the reference
+    import app.api.websocket as api_ws
+    import app.websocket.message_handler as ws_handler
+    api_ws.async_session_factory = test_session_factory
+    ws_handler.async_session_factory = test_session_factory
+
     yield app
 
-    # Cleanup
+    # Cleanup: restore original factory
+    db_mod.async_session_factory = old_factory
+
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
