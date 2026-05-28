@@ -179,3 +179,41 @@ class InvalidRoomStatusError(AppException):
 
     def __init__(self, message: str = "当前直播间状态不允许此操作"):
         super().__init__(code=1001, message=message, status_code=400)
+
+
+# ── Currency exceptions ────────────────────────────────────────────
+
+
+class InsufficientBalanceError(AppException):
+    """Insufficient wallet balance (4001)."""
+
+    def __init__(self):
+        super().__init__(code=4001, message="余额不足", status_code=400)
+
+
+class InvalidRechargeAmountError(AppException):
+    """Invalid recharge tier or amount (4002)."""
+
+    def __init__(self, message: str = "充值金额非法"):
+        super().__init__(code=4002, message=message, status_code=400)
+
+
+class GiftNotFoundError(AppException):
+    """Gift not found (4003)."""
+
+    def __init__(self):
+        super().__init__(code=4003, message="礼物不存在", status_code=404)
+
+
+class RechargeOrderNotFoundError(AppException):
+    """Recharge order not found."""
+
+    def __init__(self):
+        super().__init__(code=1004, message="充值订单不存在", status_code=404)
+
+
+class RechargeOrderAlreadyPaidError(AppException):
+    """Recharge order has already been paid."""
+
+    def __init__(self):
+        super().__init__(code=1001, message="该订单已支付", status_code=400)

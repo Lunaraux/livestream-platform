@@ -85,6 +85,9 @@ class Wallet(TimestampMixin, Base):
     # Balance in fen (integer) — per 00-global.md currency convention
     balance_fen: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
+    # Frozen balance (e.g., pending withdrawals) — per 05-currency.md
+    frozen_fen: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="wallet")
 
