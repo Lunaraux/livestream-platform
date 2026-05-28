@@ -217,3 +217,41 @@ class RechargeOrderAlreadyPaidError(AppException):
 
     def __init__(self):
         super().__init__(code=1001, message="该订单已支付", status_code=400)
+
+
+# ── Settlement exceptions ──────────────────────────────────────────
+
+
+class WithdrawAmountTooLowError(AppException):
+    """Withdraw amount below minimum threshold (5001)."""
+
+    def __init__(self):
+        super().__init__(code=5001, message="提现金额不足最低限额（最低100元）", status_code=400)
+
+
+class WithdrawPendingError(AppException):
+    """Already have a pending withdraw request (5002)."""
+
+    def __init__(self):
+        super().__init__(code=5002, message="提现申请处理中，请勿重复提交", status_code=400)
+
+
+class InsufficientAvailableBalanceError(AppException):
+    """Insufficient available balance for withdraw."""
+
+    def __init__(self):
+        super().__init__(code=4001, message="可提现余额不足", status_code=400)
+
+
+class WithdrawRequestNotFoundError(AppException):
+    """Withdraw request not found."""
+
+    def __init__(self):
+        super().__init__(code=1004, message="提现申请不存在", status_code=404)
+
+
+class WithdrawAlreadyProcessedError(AppException):
+    """Withdraw request already processed."""
+
+    def __init__(self):
+        super().__init__(code=1001, message="该提现申请已处理", status_code=400)
