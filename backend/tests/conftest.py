@@ -38,8 +38,9 @@ async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 def _mock_redis():
-    """Create a mock that fakes a Redis key-value store."""
+    """Create a mock that fakes a Redis key-value store with sorted set support."""
     store: dict[str, str] = {}
+    zsets: dict[str, dict[str, float]] = {}
 
     async def _setex(key, ttl, value):
         store[key] = value
@@ -55,6 +56,26 @@ def _mock_redis():
         return current + amount
     async def _delete(key):
         store.pop(key, None)
+    async def _expire(key, ttl):
+        pass  # no-op in mock
+    async def _zadd(key, mapping):
+        if key not in zsets:
+            zsets[key] = {}
+        zsets[key].update(mapping)
+    async def _zremrangebyscore(key, min_score, max_score):
+        if key not in zsets:
+            return 0
+        removed = 0
+        to_remove = [
+            member for member, score in zsets[key].items()
+            if min_score <= score <= max_score
+        ]
+        for member in to_remove:
+            del zsets[key][member]
+            removed += 1
+        return removed
+    async def _zcard(key):
+        return len(zsets.get(key, {}))
     async def _aclose():
         pass
 
@@ -65,18 +86,13 @@ def _mock_redis():
     mock.set = AsyncMock(side_effect=_set)
     mock.incrby = AsyncMock(side_effect=_incrby)
     mock.delete = AsyncMock(side_effect=_delete)
+    mock.expire = AsyncMock(side_effect=_expire)
+    mock.zadd = AsyncMock(side_effect=_zadd)
+    mock.zremrangebyscore = AsyncMock(side_effect=_zremrangebyscore)
+    mock.zcard = AsyncMock(side_effect=_zcard)
     mock.aclose = AsyncMock(side_effect=_aclose)
     return mock
 
-
-_redis_mock = _mock_redis()
-
-
-async def _mock_get_redis():
-    return _redis_mock
-
-
-# ── App fixture ────────────────────────────────────────────────────
 
 @pytest.fixture
 async def app():
@@ -85,6 +101,11 @@ async def app():
     Monkey-patches get_redis at every import site BEFORE creating the app,
     so all module-level imports of get_redis resolve to the mock.
     """
+    # Create fresh Redis mock for each test
+    fresh_mock = _mock_redis()
+
+    async def _mock_get_redis():
+        return fresh_mock
     # Must import and patch BEFORE any other app imports that reference get_redis
     import app.core.redis as core_redis
 
@@ -100,9 +121,11 @@ async def app():
     # Also patch already-imported modules that cached get_redis as a local name
     import app.core.security as security_mod
     import app.services.room_service as room_svc
+    import app.services.interaction_service as interaction_svc
 
     security_mod.get_redis = _mock_get_redis
     room_svc.get_redis = _mock_get_redis
+    interaction_svc.get_redis = _mock_get_redis
 
     app = create_app()
     app.dependency_overrides[get_db] = override_get_db

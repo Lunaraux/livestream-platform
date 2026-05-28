@@ -9,6 +9,8 @@ from app.api.user import admin_router as user_admin_router
 from app.api.user import router as user_router
 from app.api.room import router as room_router
 from app.api.room import admin_router as room_admin_router
+from app.api.interaction import router as interaction_router
+from app.api.interaction import admin_router as interaction_admin_router
 from app.core.config import settings
 from app.core.exceptions import AppException
 
@@ -62,6 +64,8 @@ def create_app() -> FastAPI:
     app.include_router(user_admin_router)
     app.include_router(room_router)
     app.include_router(room_admin_router)
+    app.include_router(interaction_router)
+    app.include_router(interaction_admin_router)
 
     return app
 
